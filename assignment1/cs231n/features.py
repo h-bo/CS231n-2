@@ -5,6 +5,10 @@ import matplotlib
 import numpy as np
 from scipy.ndimage import uniform_filter
 
+from matplotlib import pyplot as plt
+from skimage.feature import local_binary_pattern
+from scipy.stats import itemfreq
+
 
 def extract_features(imgs, feature_fns, verbose=False):
   """
@@ -40,17 +44,29 @@ def extract_features(imgs, feature_fns, verbose=False):
   # Now that we know the dimensions of the features, we can allocate a single
   # big array to store all features as columns.
   total_feature_dim = sum(feature_dims)
+  print(total_feature_dim)
   imgs_features = np.zeros((num_images, total_feature_dim))
   imgs_features[0] = np.hstack(first_image_features).T
 
   # Extract features for the rest of the images.
   for i in xrange(1, num_images):
+  # for i in xrange(5867,5868):
+    # if i== 5867:
+    # print(imgs_features.shape)
+    # print(feature_fn(imgs[i].squeeze()).shape)
+    # imgs_features[i] = feature_fn(imgs[i].squeeze())
     idx = 0
+    # if i== 5867:
+    #   print(feature_dims)
+    #   print(i)
+    #   print(imgs[i].shape)
     for feature_fn, feature_dim in zip(feature_fns, feature_dims):
       next_idx = idx + feature_dim
+      # print(next_idx)
+      # print(feature_dim)
       imgs_features[i, idx:next_idx] = feature_fn(imgs[i].squeeze())
       idx = next_idx
-    if verbose and i % 1000 == 0:
+    if verbose and i % 10000 == 0:
       print('Done extracting features for %d / %d images' % (i, num_images))
 
   return imgs_features
@@ -67,6 +83,27 @@ def rgb2gray(rgb):
   
   """
   return np.dot(rgb[...,:3], [0.299, 0.587, 0.144])
+
+def lbp_feature(img, neighbours=8, radius=3):
+  if im.ndim == 3:
+    image = rgb2gray(im)
+  else:
+    image = np.at_least_2d(im)
+  lbp = local_binary_pattern(image, neighbours, radius, method='uniform')
+  x = itemfreq(lbp.ravel())
+  hist = x[:, 1]/sum(x[:, 1])
+  return hist
+
+def orb_feature(im, num_points=500):
+  if im.ndim == 3:
+    image = rgb2gray(im)
+  else:
+    image = np.at_least_2d(im)
+
+  orb = cv2.ORB(num_points)
+  k = orb.detect(img, None)
+  k, d = orb.compute(img, k)
+  return d.reshape(-1,1).ravel()
 
 
 def hog_feature(im):
