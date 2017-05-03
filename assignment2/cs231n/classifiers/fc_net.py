@@ -187,16 +187,18 @@ class FullyConnectedNet(object):
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
-        dim_list = hidden_dims + [num_classes]
+        dim_list = [input_dim] + hidden_dims + [num_classes]
         for i in xrange(self.num_layers):
             b = 'b' + str(i+1)
-            self.params[b] = np.zeros(dim_list[i])
             W = 'W' + str(i+1)
-            if i == 0:
-                self.params[W] = np.random.randn(input_dim, dim_list[i])*weight_scale
-            else:
-                self.params[W] = np.random.randn(dim_list[i-1], dim_list[i])*weight_scale
-        ############################################################################
+            self.params[b] = np.zeros(dim_list[i+1])
+            self.params[W] = np.random.randn(dim_list[i], dim_list[i+1]) * weight_scale
+            if self.use_batchnorm == True and i < self.num_layers - 1:
+                gamma = 'gamma'+str(i+1)
+                beta = 'beta'+str(i+1)
+                self.params[gamma] = np.ones(dim_list[i+1])
+                self.params[beta] = np.zeros(dim_list[i+1])
+        ######################d######################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
 
@@ -216,7 +218,10 @@ class FullyConnectedNet(object):
         # pass of the second batch normalization layer, etc.
         self.bn_params = []
         if self.use_batchnorm:
-            self.bn_params = [{'mode': 'train'} for i in range(self.num_layers - 1)]
+            self.bn_params = [{'mode': 'train',\
+                                'running_mean': np.zeros(dim_list[i+1]), \
+                                'running_var': np.zeros(dim_list[i+1])} \
+                                for i in range(self.num_layers - 1)]
 
         # Cast all parameters to the correct datatype
         for k, v in self.params.items():
@@ -253,6 +258,7 @@ class FullyConnectedNet(object):
         # self.bn_params[1] to the forward pass for the second batch normalization #
         # layer, etc.                                                              #
         ############################################################################
+        '''
         hidden = {}
         cache_fc = {}
         hidden[0] = X
@@ -267,6 +273,39 @@ class FullyConnectedNet(object):
         W = 'W' + str(self.num_layers)
         hidden[self.num_layers], cache_fc[self.num_layers] = affine_forward(hidden[self.num_layers-1],
                                                                         self.params[W], self.params[b])
+        scores = hidden[self.num_layers]
+        '''
+
+        hidden = {}
+        cache_fc = {}
+        hidden[0] = X
+        # Hidden layers 1...L-1 forward prop
+        for i in xrange(1,self.num_layers):
+            b = self.params['b' + str(i)]
+            W = self.params['W' + str(i)]
+            if self.use_batchnorm and self.use_dropout:
+                bn_param = self.bn_params[i-1]
+                gamma = self.params['gamma'+str(i)]
+                beta = self.params['beta'+str(i)]
+                hidden[i], cache_fc[i] = affine_batchnorm_relu_dropout_forward(hidden[i-1], \
+                                            W, b, gamma, beta, bn_param, self.dropout_param)
+            elif self.use_dropout:
+                hidden[i], cache_fc[i] = affine_relu_dropout_forward(hidden[i-1], \
+                                            W, b, self.dropout_param)
+            elif self.use_batchnorm:
+                bn_param = self.bn_params[i-1]
+                gamma = self.params['gamma'+str(i)]
+                beta = self.params['beta'+str(i)]
+                hidden[i], cache_fc[i] = affine_batchnorm_relu_forward(hidden[i-1], \
+                                            W, b, gamma, beta, bn_param)
+            else:
+                hidden[i], cache_fc[i] = affine_relu_forward(hidden[i-1], W, b)
+
+        # Hidden layer L forward prop
+        b = self.params['b' + str(self.num_layers)]
+        W = self.params['W' + str(self.num_layers)]
+        hidden[self.num_layers], cache_fc[self.num_layers] = affine_forward(hidden[self.num_layers-1], W, b)
+        
         scores = hidden[self.num_layers]
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -309,7 +348,19 @@ class FullyConnectedNet(object):
         for i in xrange(self.num_layers-1, 0, -1):
             b = 'b' + str(i)
             W = 'W' + str(i)
-            dx[i], grads[W], grads[b] = affine_relu_backward(dx[i+1], cache_fc[i])
+            # bn_param = self.bn_params[i]
+            gamma = 'gamma' + str(i)
+            beta = 'beta' + str(i)
+
+            if self.use_batchnorm and self.use_dropout:
+                dx[i], grads[W], grads[b], grads[gamma], grads[beta] = affine_batchnorm_relu_dropout_backward(dx[i+1], cache_fc[i])
+            elif self.use_dropout:
+                dx[i], grads[W], grads[b] = affine_relu_dropout_backward(dx[i+1], cache_fc[i])
+            elif self.use_batchnorm:
+                dx[i], grads[W], grads[b], grads[gamma], grads[beta] = affine_batchnorm_relu_backward(dx[i+1], cache_fc[i])
+            else:  
+                dx[i], grads[W], grads[b] = affine_relu_backward(dx[i+1], cache_fc[i])
+                
             grads[W] += self.reg*self.params[W]
         ############################################################################
         #                             END OF YOUR CODE                             #

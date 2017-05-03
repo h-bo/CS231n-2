@@ -238,14 +238,14 @@ def batchnorm_backward(dout, cache):
     var = (x - batch_mean)**2
     '''
     dxhat = gamma * dout                                            # N, D
-    dvar = -0.5 * np.sum((((batch_var + eps)**(-1.5)) \
-                                        * x_mu * dxhat), axis=0)     # D,
+    dvar = -0.5 * ((batch_var + eps)**(-1.5)) \
+                                * np.sum(x_mu * dxhat, axis=0)     # D,
     dx_mu = dxhat / np.sqrt(batch_var + eps)                        # N, D
-    dx_mu += (2/N) * x_mu * np.ones([N,D]) * dvar                     # N, D
+    dx_mu += (2.0/N) * x_mu * np.ones([N,D]) * dvar                     # N, D
     # dx_mu += (2/N) * x_mu * dvar                                    # N, D
     dmu = -1 * np.sum(dx_mu, axis=0)                                # D,
 
-    dx = dx_mu + (1/N) * (np.ones([N,D]) * dmu)                     # N, D
+    dx = dx_mu + (1.0/N) * (np.ones([N,D]) * dmu)                     # N, D
     # dx = dx_mu + (1/N) * dmu                                        # N, D
     dgamma = np.sum((dout*norm_x), axis=0)                          # D,
     dbeta = np.sum(dout, axis=0)                                    # D,
@@ -286,7 +286,7 @@ def batchnorm_backward_alt(dout, cache):
 
     dbeta = np.sum(dout, axis=0)
     dgamma = np.sum(dout*norm_x, axis=0)
-    dx = (1/N) * gamma * (batch_var + eps)**(-0.5) * (N * dout - np.sum(dout, axis=0) \
+    dx = (1.0/N) * gamma * (batch_var + eps)**(-0.5) * (N * dout - np.sum(dout, axis=0) \
                     - x_mu * (batch_var + eps)**(-1.0) * \
                     np.sum(dout * x_mu, axis=0))
     ###########################################################################
