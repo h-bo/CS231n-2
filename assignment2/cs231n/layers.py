@@ -400,7 +400,24 @@ def conv_forward_naive(x, w, b, conv_param):
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
-    pass
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    
+    S = conv_param['stride']
+    P = conv_param['pad']
+    
+    H_out = int(1 + 1.0 * (H + 2 * P - HH) / S)
+    W_out = int(1 + 1.0 * (W + 2 * P - WW) / S)
+    
+    x_padded = np.pad(x, ((0, 0), (0, 0), (P, P), (P, P)), mode='constant')
+    
+    out = np.zeros((N, F, H_out, W_out))
+    for n in xrange(N):
+        for f in xrange(F):
+            for h_out in xrange(H_out):
+                for w_out in xrange(W_out):
+                    rec_field = x_padded[n, :, h_out*S:h_out*S+HH, w_out*S:w_out*S+WW]
+                    out[n, f, h_out, w_out] = np.sum(rec_field * w[f, :]) + b[f]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -425,7 +442,29 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    _, F, H_out, W_out = dout.shape 
+    _, _, HH, WW = w.shape
+    
+    S = conv_param['stride']
+    P = conv_param['pad']
+    
+    x_padded = np.pad(x, ((0, 0), (0, 0), (P, P), (P, P)), mode='constant')
+
+    dx, dx_padded, dw, db = np.zeros(x.shape), np.zeros(x_padded.shape), np.zeros(w.shape), np.zeros(b.shape)
+
+    for n in xrange(N):
+        for f in xrange(F):
+            for h_out in xrange(H_out):
+                for w_out in xrange(W_out):
+                    rec_field = x_padded[n, :, h_out*S:h_out*S+HH, w_out*S:w_out*S+WW]
+                    db[f] += dout[n, f, h_out, w_out]
+                    dw[f, :] += rec_field * dout[n, f, h_out, w_out]
+                    dx_padded[n, :, h_out*S:h_out*S+HH, w_out*S:w_out*S+WW] += \
+                        w[f,:] * dout[n, f, h_out, w_out]
+
+    dx = dx_padded[:, :, P:-P, P:-P]
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
