@@ -51,10 +51,9 @@ class ThreeLayerConvNet(object):
         C, H, W = input_dim
         F = num_filters 
         HH, WW = filter_size, filter_size
-
         self.params['W1'] = np.random.randn(F, C, HH, WW) * weight_scale
         self.params['b1'] = np.zeros(F)
-        self.params['W2'] = np.random.randn(F * H/2 * W/2, hidden_dim) * weight_scale
+        self.params['W2'] = np.random.randn(F * H//2 * W//2, hidden_dim) * weight_scale
         self.params['b2'] = np.zeros(hidden_dim)
         self.params['W3'] = np.random.randn(hidden_dim, num_classes) * weight_scale
         self.params['b3'] = np.zeros(num_classes)
@@ -91,7 +90,7 @@ class ThreeLayerConvNet(object):
         ############################################################################
         out1, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
         out2, cache2 = affine_relu_forward(out1, W2, b2)
-        out3, cache3 = affine_forward(out2, W3, b3)
+        scores, cache3 = affine_forward(out2, W3, b3)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -106,7 +105,7 @@ class ThreeLayerConvNet(object):
         # data loss using softmax, and make sure that grads[k] holds the gradients #
         # for self.params[k]. Don't forget to add L2 regularization!               #
         ############################################################################
-        data_loss, dscores = softmax_loss(out3, y)
+        data_loss, dscores = softmax_loss(scores, y)
         reg_loss = 0.5*self.reg*(np.sum(W1*W1) + np.sum(W2*W2))
         loss = data_loss + reg_loss
 
