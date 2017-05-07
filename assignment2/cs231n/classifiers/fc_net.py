@@ -188,7 +188,7 @@ class FullyConnectedNet(object):
         # parameters should be initialized to zero.                                #
         ############################################################################
         dim_list = [input_dim] + hidden_dims + [num_classes]
-        for i in xrange(self.num_layers):
+        for i in range(self.num_layers):
             b = 'b' + str(i+1)
             W = 'W' + str(i+1)
             self.params[b] = np.zeros(dim_list[i+1])
@@ -280,7 +280,7 @@ class FullyConnectedNet(object):
         cache_fc = {}
         hidden[0] = X
         # Hidden layers 1...L-1 forward prop
-        for i in xrange(1,self.num_layers):
+        for i in range(1,self.num_layers):
             b = self.params['b' + str(i)]
             W = self.params['W' + str(i)]
             if self.use_batchnorm and self.use_dropout:
@@ -332,7 +332,7 @@ class FullyConnectedNet(object):
         # Loss
         data_loss, dscores = softmax_loss(scores, y)
         reg_loss = 0
-        for i in xrange(1, self.num_layers + 1):
+        for i in range(1, self.num_layers + 1):
             W = 'W' + str(i)
             reg_loss += 0.5*self.reg*np.sum(self.params[W]*self.params[W])
         loss = data_loss + reg_loss
@@ -345,7 +345,7 @@ class FullyConnectedNet(object):
         grads[W] += self.reg*self.params[W]
 
         # Layers L-1...1 backprop
-        for i in xrange(self.num_layers-1, 0, -1):
+        for i in range(self.num_layers-1, 0, -1):
             b = 'b' + str(i)
             W = 'W' + str(i)
             # bn_param = self.bn_params[i]
