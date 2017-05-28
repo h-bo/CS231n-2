@@ -137,7 +137,44 @@ class CaptioningRNN(object):
         # defined above to store loss and gradients; grads[k] should give the      #
         # gradients for self.params[k].                                            #
         ############################################################################
-        pass
+        # LOSS:
+        # (1) compute initial hidden state
+        h0 = features.dot( W_proj ) + b_proj
+        # (2) compute word embeddings
+        x, cache_embed = word_embedding_forward( captions_in, W_embed )
+        # (3) RNN/LSTM forward
+        if self.cell_type == 'rnn':
+            h, cache_rnn = rnn_forward(x, h0, Wx, Wh, b)
+        elif self.cell_type == 'lstm':
+            h, cache_rnn = lstm_forward(x, h0, Wx, Wh, b)
+        # (4) compute scores
+        scores, cache_scores = temporal_affine_forward(h, W_vocab, b_vocab)
+        # (5) compute loss
+        loss, dscores = temporal_softmax_loss( scores, captions_out, mask, verbose=False)
+        
+        # GRADIENTS:
+        # (4)
+        dh, dW_vocab, db_vocab = temporal_affine_backward( dscores, cache_scores )
+        # (3)
+        if self.cell_type == 'rnn':
+            dx, dh0, dWx, dWh, db = rnn_backward(dh, cache_rnn)
+        elif self.cell_type == 'lstm':
+            dx, dh0, dWx, dWh, db = lstm_backward(dh, cache_rnn)
+        # (2)
+        dW_embed = word_embedding_backward(dx, cache_embed)
+        # (1)
+        dW_proj = features.T.dot( dh0 )
+        db_proj = np.sum(dh0, axis=0)
+        
+        # Create grads dict
+        grads = dict( b_proj = db_proj,
+                     W_proj = dW_proj,
+                     W_embed = dW_embed,
+                     b = db,
+                     Wh = dWh,
+                     Wx = dWx,
+                     b_vocab = db_vocab,
+                     W_vocab = dW_vocab )
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -199,7 +236,33 @@ class CaptioningRNN(object):
         # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
         # a loop.                                                                 #
         ###########################################################################
-        pass
+        # Initialise h0
+        h0 = features.dot(W_proj) + b_proj
+        prev_h = h0
+        prev_c = np.zeros(h0.shape)
+        
+        # First word should be self._start
+        captions[:, 0] = self._start
+        captions_t = self._start * np.ones(N, dtype=np.int32)
+        
+        for t in range(max_length):
+            embed_t, _ = word_embedding_forward( captions_t, W_embed )
+            if self.cell_type == 'rnn':
+                h_t, _ = rnn_step_forward(embed_t, prev_h, Wx, Wh, b)
+            if self.cell_type == 'lstm':
+                h_t, c_t, _ = lstm_step_forward(embed_t, prev_h, prev_c, Wx, Wh, b)
+
+            scores, _ = temporal_affine_forward(h_t[:, np.newaxis, :], W_vocab, b_vocab)
+            scores_t = scores[:, 0, :]
+
+            idx = np.argmax(scores_t, axis=1)
+            
+            captions[:, t] = idx
+            prev_h = h_t
+            prev_c = c_t
+            captions_t = captions[:, t]
+        
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
